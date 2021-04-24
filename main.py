@@ -1,20 +1,23 @@
-import shutil
-from typing import List
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI
+from api import video_router
+from db import database
 
 app = FastAPI()
 
+app.include_router(video_router)
 
-@app.post('/')
-async def root(file: UploadFile = File(...)):
-    with open(f'{file.filename}', 'wb') as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return {'file_name': file.filename}
+app.state.database = database
 
 
-@app.post('/img')
-async def root(files: List[UploadFile] = File(...)):
-    for img_file in files:
-        with open(f'{img_file.filename}', 'wb') as buffer:
-            shutil.copyfileobj(img_file.file, buffer)
-    return {'status': 'Good'}
+@app.on_event("startup")
+async def startup() -> None:
+    database_ = app.state.database
+    if not database_.is_connected:
+        await database_.connect()
+
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
+    database_ = app.state.database
+    if database_.is_connected:
+        await database_.disconnect()
