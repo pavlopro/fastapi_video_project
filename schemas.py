@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import List
 
 
 class User(BaseModel):
@@ -8,7 +7,7 @@ class User(BaseModel):
 
 
 class UploadVideo(BaseModel):
-    name: str
+    title: str
     description: str
 
 

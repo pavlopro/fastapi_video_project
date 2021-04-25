@@ -1,39 +1,32 @@
 import shutil
-from typing import List
-from fastapi import APIRouter, UploadFile, File, Form, Request
-from fastapi.responses import JSONResponse
-from schemas import UploadVideo, GetVideo, User, Message
-from models import Video
+from fastapi import APIRouter, UploadFile, File, Form
+from schemas import UploadVideo
+from models import Video, User
 
 
 video_router = APIRouter()
 
 
 @video_router.post('/')
-async def root(title: str = Form(...), description: str = Form(...), file: UploadFile = File(...)):
+async def create_video(title: str = Form(...), description: str = Form(...), file: UploadFile = File(...)):
+    info = UploadVideo(title=title, description=description)
     with open(f'{file.filename}', 'wb') as buffer:
         shutil.copyfileobj(file.file, buffer)
-    info = UploadVideo(name=title, description=description)
-    return {'file_name': file.filename, 'info': info}
+    user = await User.objects.first()
+    return await Video.objects.create(user_id=user, file=file.filename, **info.dict())
 
 
-@video_router.post('/img', status_code=201)
-async def root(files: List[UploadFile] = File(...)):
-    for img_file in files:
-        with open(f'{img_file.filename}', 'wb') as buffer:
-            shutil.copyfileobj(img_file.file, buffer)
-    return {'status': 'Good'}
+@video_router.get("/video/{video_pk}", response_model=Video)
+async def get_video(video_pk: int):
+    return await Video.objects.select_related('user_id').get(pk=video_pk)
 
 
-@video_router.get('/video', response_model=GetVideo, responses={404: {"model": Message}})
-async def get_video():
-    video = UploadVideo(**{'name': 'Test', 'description': 'Description'})
-    user = User(**{'id': 5, 'name': 'Test'})
-    # return GetVideo(user=user, video=video)
-    return JSONResponse(status_code=404, content={'message': 'Item not found'})
+@video_router.post('/user', response_model=User)
+async def create_user(user: User):
+    await user.save()
+    return user
 
 
-@video_router.post('/video', response_model=Video)
-async def create_video(video: Video):
-    await video.save()
-    return video
+@video_router.get("/user/{user_id}", response_model=User)
+async def get_user(user_pk: int):
+    return await User.objects.get(pk=user_pk)

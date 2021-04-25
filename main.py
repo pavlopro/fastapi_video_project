@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from api import video_router
-from db import database
+from db import database, engine, metadata
 
 app = FastAPI()
 
 app.include_router(video_router)
 
+metadata.create_all(engine)
 app.state.database = database
 
 
